@@ -21,6 +21,7 @@ dev = [
     "grpcio-tools>=1.60.0",
     "pytest>=7.0",
     "pytest-asyncio>=0.23",
+    "pytest-timeout>=2.2",
 ]
 
 [tool.pytest.ini_options]
