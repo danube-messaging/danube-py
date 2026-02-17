@@ -1,0 +1,211 @@
+syntax = "proto3";
+
+package danube;
+
+service ProducerService {
+    // Creates a new Producer on a topic
+    rpc CreateProducer(ProducerRequest) returns (ProducerResponse);
+
+    // Sends a message from the Producer
+    rpc SendMessage(StreamMessage) returns (MessageResponse);
+}
+
+enum ProducerAccessMode {
+    Shared = 0; // multiple producers can publish on a topic
+    Exclusive = 1; // exclusive access for producer
+}
+
+enum DispatchStrategy {
+    NonReliable = 0;
+    Reliable = 1;
+}
+
+// Create Producer request
+message ProducerRequest { 
+    uint64 request_id = 1;
+    string producer_name = 2;
+    string topic_name = 3;
+    SchemaReference schema_ref = 4;
+    ProducerAccessMode producer_access_mode = 5;
+    DispatchStrategy dispatch_strategy = 6;
+}
+
+// Reference to a schema in the schema registry
+message SchemaReference {
+    string subject = 1;              // Subject name (usually topic name)
+    oneof version_ref {
+        bool use_latest = 2;         // Use latest version (true)
+        uint32 pinned_version = 3;   // Use specific version number
+        uint32 min_version = 4;      // Use version >= this number
+    }
+}
+
+// Create Producer response
+message ProducerResponse {
+    uint64 request_id = 1 ;
+    uint64 producer_id = 2;
+    string producer_name = 3;
+} 
+
+// Producer receive acknowledge for the sent message
+message MessageResponse {
+    uint64 request_id = 1;
+}
+
+// ============================================================================================
+
+service ConsumerService {
+    // Creates a new Subscriber
+    rpc Subscribe(ConsumerRequest) returns (ConsumerResponse);
+
+    // Streaming messages to the Subscriber
+    rpc ReceiveMessages(ReceiveRequest) returns (stream StreamMessage);
+
+    // Acknowledges receipt of a message from the Consumer
+    rpc Ack(AckRequest) returns (AckResponse);
+}
+
+// Create Consumer request
+message ConsumerRequest {
+    enum SubscriptionType {
+        Exclusive = 0; // Only one consumer can subscribe to the topic at a time.
+        Shared = 1 ; // Multiple consumers can subscribe to the topic concurrently.
+        Failover = 2; // Only one consumer (the active consumer) receives messages at any given time.
+    }
+    uint64 request_id = 1;
+    string topic_name = 2;
+    string consumer_name = 3;
+    string subscription = 4;
+    SubscriptionType subscription_type = 5;
+}
+
+// Create Consumer response
+message ConsumerResponse {
+    uint64 request_id = 1;
+    uint64 consumer_id = 2;
+    string consumer_name = 3;
+}
+
+message ReceiveRequest {
+    uint64 request_id = 1;
+    uint64 consumer_id = 2;
+}
+
+// The message that is sent by producer to topic and then to consumer
+message StreamMessage {
+    // Unique ID for tracking the message request
+    uint64 request_id = 1;
+    // Identifies the message, associated with a unique topic, subscription and the broker
+    MsgID msg_id = 2;
+    // The actual payload of the message
+    bytes payload = 3;
+    // Timestamp for when the message was published
+    uint64 publish_time = 4;
+    // Identifies the producer’s name
+    string producer_name = 5;
+    // Subscription name the consumer is subscribed to
+    string subscription_name = 6;
+    // User-defined properties/attributes
+    map<string, string> attributes = 7;
+    // NEW: Schema identification for registry-based schemas
+    optional uint64 schema_id = 8;      // Global schema ID from registry
+    optional uint32 schema_version = 9; // Schema version number
+}
+
+// Unique ID of the message
+message MsgID {
+    // Identifies the producer, associated with a unique topic
+    uint64 producer_id = 1;
+    // Topic name the message is published to
+    string topic_name = 2;
+    // Broker address
+    string broker_addr = 3;
+    // Offset within the topic
+    uint64 topic_offset = 5;
+}
+
+message AckRequest {
+    uint64 request_id = 1;
+    // Identifies the message, associated with a unique topic, subscription and the broker
+    MsgID msg_id = 2; 
+    // Subscription name the consumer is subscribed to
+    string subscription_name = 3;
+}
+
+message AckResponse {
+    uint64 request_id = 1;
+}
+
+// ============================================================================================
+
+service Discovery {
+    // Query the Danube broker for information about a specific topic.
+    // returns metadata about the topic, including the broker(s) responsible for it.
+    rpc TopicLookup(TopicLookupRequest) returns (TopicLookupResponse);
+    // Query the Danube broker for information about topic partitions.
+    // returns an array with the topic partitions names
+    rpc TopicPartitions(TopicLookupRequest) returns (TopicPartitionsResponse);
+}
+
+message TopicLookupRequest {
+    uint64 request_id = 1;
+    string topic = 2;
+}
+
+message TopicLookupResponse {
+    enum LookupType {
+        Redirect = 0;
+        Connect  = 1;
+        Failed   = 2;
+    }
+    uint64 request_id = 3;
+    LookupType response_type = 4;
+    string connect_url = 5;
+    string broker_url = 6;
+    bool proxy = 7;
+}
+
+message TopicPartitionsResponse {
+    uint64 request_id = 1;
+    repeated string partitions = 2;
+}
+
+// ============================================================================================
+
+service HealthCheck {
+    rpc HealthCheck(HealthCheckRequest) returns (HealthCheckResponse);
+}
+
+message HealthCheckRequest {
+    enum ClientType {
+        Producer = 0;
+        Consumer = 1;
+    }
+    uint64 request_id = 1;
+    ClientType client = 2;
+    uint64 id = 3;
+}
+
+message HealthCheckResponse {
+    enum ClientStatus {
+        OK = 0;
+        CLOSE = 1;
+    }
+    ClientStatus status = 1;
+}
+
+// ============================================================================================
+
+service AuthService {
+    rpc Authenticate (AuthRequest) returns (AuthResponse);
+}
+
+message AuthRequest {
+    string api_key = 1;
+}
+
+message AuthResponse {
+    string token = 1;
+}
+
+// ============================================================================================
