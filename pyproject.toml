@@ -4,14 +4,38 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "danube-client"
-version = "0.1.0"
+version = "0.2.0"
 description = "Python async client for the Danube messaging platform"
+readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
+authors = [
+    { name = "Dan Rusei", email = "dan.rusei@gmail.com" },
+]
+keywords = ["messaging", "streaming", "pubsub", "grpc", "async"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Framework :: AsyncIO",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: System :: Networking",
+]
 dependencies = [
     "grpcio>=1.60.0",
     "protobuf>=4.25.0",
 ]
+
+[project.urls]
+Homepage = "https://github.com/danube-messaging/danube-py"
+Documentation = "https://danube-docs.dev-state.com"
+Repository = "https://github.com/danube-messaging/danube-py"
+Issues = "https://github.com/danube-messaging/danube-py/issues"
 
 [tool.setuptools.packages.find]
 include = ["danube*"]
