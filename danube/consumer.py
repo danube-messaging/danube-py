@@ -110,6 +110,20 @@ class Consumer:
         if tc is not None:
             await tc.send_ack(message.request_id, message.msg_id, self._subscription)
 
+    async def nack(
+        self,
+        message: DanubeApi_pb2.StreamMessage,
+        delay_ms: Optional[int] = None,
+        reason: Optional[str] = None,
+    ) -> None:
+        """Send a negative acknowledgement for a received message."""
+        topic_name = message.msg_id.topic_name
+        tc = self._consumers.get(topic_name)
+        if tc is not None:
+            await tc.send_nack(
+                message.request_id, message.msg_id, self._subscription, delay_ms, reason
+            )
+
     async def close(self) -> None:
         """Gracefully stop all receive tasks and background activities."""
         self._shutdown.set()

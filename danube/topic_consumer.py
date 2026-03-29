@@ -146,6 +146,36 @@ class TopicConsumer:
 
         return await self._stub.Ack(ack_request, metadata=metadata)
 
+    async def send_nack(
+        self,
+        request_id: int,
+        msg_id,
+        subscription_name: str,
+        delay_ms: Optional[int] = None,
+        reason: Optional[str] = None,
+    ):
+        """Send a negative acknowledgement for a received message."""
+        if self._stub is None:
+            raise UnrecoverableError("send_nack: consumer is not connected")
+
+        kwargs = dict(
+            request_id=request_id,
+            msg_id=msg_id,
+            subscription_name=subscription_name,
+        )
+        if delay_ms is not None:
+            kwargs["delay_ms"] = delay_ms
+        if reason is not None:
+            kwargs["reason"] = reason
+
+        nack_request = DanubeApi_pb2.NackRequest(**kwargs)
+
+        api_key = self.client.connection_manager.options.api_key
+        metadata = await self.client.auth_service.attach_token_if_needed(api_key, self.connect_url)
+        metadata = insert_proxy_header(metadata, self.broker_addr, self.proxy)
+
+        return await self._stub.Nack(nack_request, metadata=metadata)
+
     async def _connect(self) -> None:
         conn = await self.client.connection_manager.get_connection(self.broker_addr, self.connect_url)
         self._stub = DanubeApi_pb2_grpc.ConsumerServiceStub(conn.channel)

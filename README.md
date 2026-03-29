@@ -195,21 +195,24 @@ Working on improving and adding new features. Please feel free to contribute or 
 
 ### Running Integration Tests
 
-Before submitting a PR, start the test cluster and run the integration tests:
+Before submitting a PR, install the dev dependencies, start the test cluster and run the integration tests:
 
 ```bash
-# 1. Start the cluster
+# 1. Install dev dependencies
+pip install -e ".[dev]"
+
+# 2. Start the cluster
 cd docker/
 docker compose up -d
 
-# 2. Wait for the broker to be healthy
+# 3. Wait for the broker to be healthy
 docker compose ps
 
-# 3. Run the integration tests from the repository root
+# 4. Run the integration tests from the repository root
 cd ..
 pytest integration_tests/ -v --timeout=120
 
-# 4. Stop the cluster when done
+# 5. Stop the cluster when done
 cd docker/
 docker compose down -v
 ```

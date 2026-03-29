@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-from danube.proto import DanubeApi_pb2 as DanubeApi__pb2
+import DanubeApi_pb2 as DanubeApi__pb2
 
 GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
@@ -168,6 +168,11 @@ class ConsumerServiceStub(object):
                 request_serializer=DanubeApi__pb2.AckRequest.SerializeToString,
                 response_deserializer=DanubeApi__pb2.AckResponse.FromString,
                 _registered_method=True)
+        self.Nack = channel.unary_unary(
+                '/danube.ConsumerService/Nack',
+                request_serializer=DanubeApi__pb2.NackRequest.SerializeToString,
+                response_deserializer=DanubeApi__pb2.NackResponse.FromString,
+                _registered_method=True)
 
 
 class ConsumerServiceServicer(object):
@@ -196,6 +201,13 @@ class ConsumerServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Nack(self, request, context):
+        """Negative acknowledgment for a message from the Consumer
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ConsumerServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -213,6 +225,11 @@ def add_ConsumerServiceServicer_to_server(servicer, server):
                     servicer.Ack,
                     request_deserializer=DanubeApi__pb2.AckRequest.FromString,
                     response_serializer=DanubeApi__pb2.AckResponse.SerializeToString,
+            ),
+            'Nack': grpc.unary_unary_rpc_method_handler(
+                    servicer.Nack,
+                    request_deserializer=DanubeApi__pb2.NackRequest.FromString,
+                    response_serializer=DanubeApi__pb2.NackResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -298,6 +315,33 @@ class ConsumerService(object):
             '/danube.ConsumerService/Ack',
             DanubeApi__pb2.AckRequest.SerializeToString,
             DanubeApi__pb2.AckResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Nack(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/danube.ConsumerService/Nack',
+            DanubeApi__pb2.NackRequest.SerializeToString,
+            DanubeApi__pb2.NackResponse.FromString,
             options,
             channel_credentials,
             insecure,
