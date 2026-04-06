@@ -20,8 +20,7 @@ class SchemaRegistryClient:
 
     async def _prepare(self, addr: str):
         conn = await self._cnx_manager.get_connection(addr, addr)
-        api_key = self._cnx_manager.options.api_key
-        metadata = await self._auth_service.attach_token_if_needed(api_key, addr)
+        metadata = await self._auth_service.attach_token_if_needed(addr)
         stub = SchemaRegistry_pb2_grpc.SchemaRegistryStub(conn.channel)
         return metadata, stub
 

@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import DanubeApi_pb2 as DanubeApi__pb2
+from danube.proto import DanubeApi_pb2 as DanubeApi__pb2
 
 GRPC_GENERATED_VERSION = '1.78.0'
 GRPC_VERSION = grpc.__version__
@@ -545,84 +545,6 @@ class HealthCheck(object):
             '/danube.HealthCheck/HealthCheck',
             DanubeApi__pb2.HealthCheckRequest.SerializeToString,
             DanubeApi__pb2.HealthCheckResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-
-class AuthServiceStub(object):
-    """============================================================================================
-
-    """
-
-    def __init__(self, channel):
-        """Constructor.
-
-        Args:
-            channel: A grpc.Channel.
-        """
-        self.Authenticate = channel.unary_unary(
-                '/danube.AuthService/Authenticate',
-                request_serializer=DanubeApi__pb2.AuthRequest.SerializeToString,
-                response_deserializer=DanubeApi__pb2.AuthResponse.FromString,
-                _registered_method=True)
-
-
-class AuthServiceServicer(object):
-    """============================================================================================
-
-    """
-
-    def Authenticate(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
-
-def add_AuthServiceServicer_to_server(servicer, server):
-    rpc_method_handlers = {
-            'Authenticate': grpc.unary_unary_rpc_method_handler(
-                    servicer.Authenticate,
-                    request_deserializer=DanubeApi__pb2.AuthRequest.FromString,
-                    response_serializer=DanubeApi__pb2.AuthResponse.SerializeToString,
-            ),
-    }
-    generic_handler = grpc.method_handlers_generic_handler(
-            'danube.AuthService', rpc_method_handlers)
-    server.add_generic_rpc_handlers((generic_handler,))
-    server.add_registered_method_handlers('danube.AuthService', rpc_method_handlers)
-
-
- # This class is part of an EXPERIMENTAL API.
-class AuthService(object):
-    """============================================================================================
-
-    """
-
-    @staticmethod
-    def Authenticate(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/danube.AuthService/Authenticate',
-            DanubeApi__pb2.AuthRequest.SerializeToString,
-            DanubeApi__pb2.AuthResponse.FromString,
             options,
             channel_credentials,
             insecure,

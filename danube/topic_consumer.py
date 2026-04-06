@@ -89,8 +89,7 @@ class TopicConsumer:
             subscription_type=self.subscription_type,
         )
 
-        api_key = self.client.connection_manager.options.api_key
-        metadata = await self.client.auth_service.attach_token_if_needed(api_key, self.connect_url)
+        metadata = await self.client.auth_service.attach_token_if_needed(self.connect_url)
         metadata = insert_proxy_header(metadata, self.broker_addr, self.proxy)
 
         try:
@@ -123,8 +122,7 @@ class TopicConsumer:
             consumer_id=self.consumer_id,
         )
 
-        api_key = self.client.connection_manager.options.api_key
-        metadata = await self.client.auth_service.attach_token_if_needed(api_key, self.connect_url)
+        metadata = await self.client.auth_service.attach_token_if_needed(self.connect_url)
         metadata = insert_proxy_header(metadata, self.broker_addr, self.proxy)
 
         return self._stub.ReceiveMessages(request, metadata=metadata)
@@ -140,8 +138,7 @@ class TopicConsumer:
             subscription_name=subscription_name,
         )
 
-        api_key = self.client.connection_manager.options.api_key
-        metadata = await self.client.auth_service.attach_token_if_needed(api_key, self.connect_url)
+        metadata = await self.client.auth_service.attach_token_if_needed(self.connect_url)
         metadata = insert_proxy_header(metadata, self.broker_addr, self.proxy)
 
         return await self._stub.Ack(ack_request, metadata=metadata)
@@ -170,8 +167,7 @@ class TopicConsumer:
 
         nack_request = DanubeApi_pb2.NackRequest(**kwargs)
 
-        api_key = self.client.connection_manager.options.api_key
-        metadata = await self.client.auth_service.attach_token_if_needed(api_key, self.connect_url)
+        metadata = await self.client.auth_service.attach_token_if_needed(self.connect_url)
         metadata = insert_proxy_header(metadata, self.broker_addr, self.proxy)
 
         return await self._stub.Nack(nack_request, metadata=metadata)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Callable, Optional
 
 import grpc
 
@@ -79,8 +79,39 @@ class DanubeClientBuilder:
         self._options.use_tls = True
         return self
 
-    def with_api_key(self, api_key: str) -> DanubeClientBuilder:
-        self._options.api_key = api_key
+    def with_token(self, token: str) -> DanubeClientBuilder:
+        """Set the authentication token (JWT) for the client.
+
+        Use ``danube-admin security tokens create`` to generate a token.
+        Automatically enables TLS. If no TLS config has been set via
+        ``with_tls()`` or ``with_mtls()``, a default TLS config using system
+        root certificates is applied.
+
+        For tokens that expire, consider :meth:`with_token_supplier` instead,
+        which allows runtime token refresh.
+        """
+        self._options.token = token
+        self._options.use_tls = True
+        if self._options.tls_credentials is None:
+            self._options.tls_credentials = grpc.ssl_channel_credentials()
+        return self
+
+    def with_token_supplier(
+        self, supplier: Callable[[], str]
+    ) -> DanubeClientBuilder:
+        """Set a dynamic token supplier for the client.
+
+        The supplier function is called on **every gRPC request** to obtain the
+        current token, enabling runtime token refresh without restarting the
+        client. Useful for:
+
+        - File-based tokens updated by infrastructure (K8s projected volumes)
+        - Environment-based tokens
+        - Custom refresh logic
+
+        Automatically enables TLS (same as ``with_token``).
+        """
+        self._options.token_supplier = supplier
         self._options.use_tls = True
         if self._options.tls_credentials is None:
             self._options.tls_credentials = grpc.ssl_channel_credentials()
@@ -89,9 +120,6 @@ class DanubeClientBuilder:
     async def build(self) -> DanubeClient:
         cnx_manager = ConnectionManager(self._options)
         auth_service = AuthService(cnx_manager)
-
-        if self._options.api_key:
-            await auth_service.authenticate_client(self._uri, self._options.api_key)
 
         lookup_service = LookupService(cnx_manager, auth_service)
         health_check_service = HealthCheckService(cnx_manager, auth_service)

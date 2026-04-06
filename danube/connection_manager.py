@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Callable, Optional
 
 import grpc
 
@@ -15,12 +15,28 @@ class BrokerAddress:
     proxy: bool
 
 
+# Type alias for a dynamic token supplier called on every request.
+TokenSupplier = Callable[[], str]
+
+
 @dataclass
 class ConnectionOptions:
     """Configures how the client connects to the broker."""
     use_tls: bool = False
     tls_credentials: Optional[grpc.ChannelCredentials] = None
-    api_key: str = ""
+    token: str = ""
+    token_supplier: Optional[TokenSupplier] = None
+    internal_broker: str = ""
+
+    def resolve_token(self) -> str:
+        """Return the current token.
+
+        If a supplier is set, calls it to get a fresh token (enabling runtime
+        rotation). Otherwise falls back to the static token.
+        """
+        if self.token_supplier is not None:
+            return self.token_supplier()
+        return self.token
 
 
 class RpcConnection:
