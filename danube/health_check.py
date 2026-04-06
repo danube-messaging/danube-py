@@ -35,7 +35,6 @@ class HealthCheckService:
         stop_event: asyncio.Event,
     ) -> asyncio.Task:
         conn = await self._cnx_manager.get_connection(broker_addr, connect_url)
-        api_key = self._cnx_manager.options.api_key
         stub = DanubeApi_pb2_grpc.HealthCheckStub(conn.channel)
 
         async def _loop() -> None:
@@ -46,7 +45,7 @@ class HealthCheckService:
                         client=client_type,
                         id=client_id,
                     )
-                    metadata = await self._auth_service.attach_token_if_needed(api_key, connect_url)
+                    metadata = await self._auth_service.attach_token_if_needed(connect_url)
                     metadata = insert_proxy_header(metadata, broker_addr, proxy)
 
                     response = await stub.HealthCheck(request, metadata=metadata)

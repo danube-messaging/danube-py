@@ -25,8 +25,7 @@ class LookupService:
         conn = await self._cnx_manager.get_connection(addr, addr)
         stub = DanubeApi_pb2_grpc.DiscoveryStub(conn.channel)
 
-        api_key = self._cnx_manager.options.api_key
-        metadata = await self._auth_service.attach_token_if_needed(api_key, addr)
+        metadata = await self._auth_service.attach_token_if_needed(addr)
 
         request = DanubeApi_pb2.TopicLookupRequest(
             request_id=next(self._request_id),
@@ -38,8 +37,7 @@ class LookupService:
         conn = await self._cnx_manager.get_connection(addr, addr)
         stub = DanubeApi_pb2_grpc.DiscoveryStub(conn.channel)
 
-        api_key = self._cnx_manager.options.api_key
-        metadata = await self._auth_service.attach_token_if_needed(api_key, addr)
+        metadata = await self._auth_service.attach_token_if_needed(addr)
 
         request = DanubeApi_pb2.TopicLookupRequest(
             request_id=next(self._request_id),

@@ -88,8 +88,7 @@ class TopicProducer:
             dispatch_strategy=self.dispatch_strategy.to_proto(),
         )
 
-        api_key = self.client.connection_manager.options.api_key
-        metadata = await self.client.auth_service.attach_token_if_needed(api_key, self.connect_url)
+        metadata = await self.client.auth_service.attach_token_if_needed(self.connect_url)
         metadata = insert_proxy_header(metadata, self.broker_addr, self.proxy)
 
         try:
@@ -152,8 +151,7 @@ class TopicProducer:
         if self.schema_version is not None:
             request.schema_version = self.schema_version
 
-        api_key = self.client.connection_manager.options.api_key
-        metadata = await self.client.auth_service.attach_token_if_needed(api_key, self.connect_url)
+        metadata = await self.client.auth_service.attach_token_if_needed(self.connect_url)
         metadata = insert_proxy_header(metadata, self.broker_addr, self.proxy)
 
         resp = await self._stub.SendMessage(request, metadata=metadata)
