@@ -8,11 +8,18 @@ Tests:
 from __future__ import annotations
 
 import asyncio
+from typing import Any
 
 import pytest
 
 from danube import DanubeClient, DispatchStrategy, SubType
 from integration_tests.conftest import unique_topic
+
+
+async def _tagged_get(queue: asyncio.Queue, tag: int) -> tuple[int, Any]:
+    """Get from queue and return (tag, message) so we know the source."""
+    msg = await queue.get()
+    return tag, msg
 
 
 @pytest.mark.asyncio
@@ -52,6 +59,8 @@ async def test_key_shared_basic(client: DanubeClient):
     )
     await consumer2.subscribe()
 
+    consumers = {1: consumer1, 2: consumer2}
+
     try:
         queue1 = await consumer1.receive()
         queue2 = await consumer2.receive()
@@ -66,8 +75,6 @@ async def test_key_shared_basic(client: DanubeClient):
             await producer.send_with_key(payload.encode(), None, key)
 
         # Collect messages from both consumers, acking inline.
-        # Key-Shared dispatch has per-key in-flight limits — the broker won't
-        # send the next message for the same key until the current one is acked.
         entries = []  # list of (msg, consumer_id)
         deadline = asyncio.get_event_loop().time() + 15.0
 
@@ -76,11 +83,10 @@ async def test_key_shared_basic(client: DanubeClient):
             if remaining <= 0:
                 pytest.fail(f"timeout: collected only {len(entries)}/{message_count} messages")
 
-            # Wait on both queues concurrently
-            done, _ = await asyncio.wait(
+            done, pending = await asyncio.wait(
                 [
-                    asyncio.create_task(queue1.get()),
-                    asyncio.create_task(queue2.get()),
+                    asyncio.create_task(_tagged_get(queue1, 1)),
+                    asyncio.create_task(_tagged_get(queue2, 2)),
                 ],
                 timeout=remaining,
                 return_when=asyncio.FIRST_COMPLETED,
@@ -90,18 +96,11 @@ async def test_key_shared_basic(client: DanubeClient):
                 pytest.fail(f"timeout: collected only {len(entries)}/{message_count} messages")
 
             for task in done:
-                msg = task.result()
-                # Determine which consumer got it by checking topic consumer mapping
-                topic_name = msg.msg_id.topic_name
-                if topic_name in consumer1._consumers:
-                    await consumer1.ack(msg)
-                    entries.append((msg, 1))
-                else:
-                    await consumer2.ack(msg)
-                    entries.append((msg, 2))
+                consumer_id, msg = task.result()
+                await consumers[consumer_id].ack(msg)
+                entries.append((msg, consumer_id))
 
-            # Cancel pending tasks from the other queue
-            for task in _ :
+            for task in pending:
                 task.cancel()
 
         # Verify: all messages with the same key went to the same consumer
@@ -168,6 +167,9 @@ async def test_key_shared_filtering(client: DanubeClient):
     )
     await consumer_b.subscribe()
 
+    # tag 1 = consumer A, tag 2 = consumer B
+    consumers = {1: consumer_a, 2: consumer_b}
+
     try:
         queue_a = await consumer_a.receive()
         queue_b = await consumer_b.receive()
@@ -194,8 +196,8 @@ async def test_key_shared_filtering(client: DanubeClient):
 
             done, pending = await asyncio.wait(
                 [
-                    asyncio.create_task(queue_a.get()),
-                    asyncio.create_task(queue_b.get()),
+                    asyncio.create_task(_tagged_get(queue_a, 1)),
+                    asyncio.create_task(_tagged_get(queue_b, 2)),
                 ],
                 timeout=remaining,
                 return_when=asyncio.FIRST_COMPLETED,
@@ -205,14 +207,12 @@ async def test_key_shared_filtering(client: DanubeClient):
                 pytest.fail(f"timeout: collected only {all_count}/{len(keys)} messages")
 
             for task in done:
-                msg = task.result()
-                topic_name = msg.msg_id.topic_name
+                consumer_id, msg = task.result()
                 key = msg.routing_key if msg.HasField("routing_key") else ""
-                if topic_name in consumer_a._consumers:
-                    await consumer_a.ack(msg)
+                await consumers[consumer_id].ack(msg)
+                if consumer_id == 1:
                     keys_on_a.append(key)
                 else:
-                    await consumer_b.ack(msg)
                     keys_on_b.append(key)
                 all_count += 1
 
@@ -237,3 +237,4 @@ async def test_key_shared_filtering(client: DanubeClient):
         await producer.close()
         await consumer_a.close()
         await consumer_b.close()
+
