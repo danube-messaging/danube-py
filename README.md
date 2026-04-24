@@ -15,10 +15,12 @@ The Python async client library for interacting with Danube Messaging Broker pla
 
 ### 📥 Consumer Capabilities
 
-- **Flexible Subscriptions** - Three subscription types for different use cases:
+- **Flexible Subscriptions** - Four subscription types for different use cases:
   - **Exclusive** - Single active consumer, guaranteed ordering
   - **Shared** - Load balancing across multiple consumers, parallel processing
   - **Failover** - High availability with automatic standby promotion
+  - **Key-Shared** - Per-key ordering with multi-consumer parallelism; messages with the same routing key always go to the same consumer
+- **Key Filtering** - In Key-Shared mode, subscribe to a subset of routing keys with glob patterns
 - **Message Acknowledgment** - Reliable message processing with at-least-once delivery
 - **Partitioned Consumption** - Automatic handling of messages from all partitions
 
@@ -109,6 +111,14 @@ producer = (
 )
 ```
 
+### Key-Shared Routing
+
+Tag messages with a routing key so all messages with the same key go to the same consumer:
+
+```python
+await producer.send_with_key(payload, None, "order-123")
+```
+
 ### Create Consumer
 
 ```python
@@ -153,6 +163,23 @@ async def main():
 asyncio.run(main())
 ```
 
+### Key-Shared with Filtering
+
+Subscribe to only specific routing keys in a Key-Shared subscription:
+
+```python
+consumer = (
+    client.new_consumer()
+    .with_topic(topic)
+    .with_consumer_name("payments-worker")
+    .with_subscription("orders-sub")
+    .with_subscription_type(SubType.KEY_SHARED)
+    .with_key_filter("payment")
+    .with_key_filter("invoice")
+    .build()
+)
+```
+
 ### Schema Registry
 
 ```python
@@ -187,7 +214,14 @@ producer = (
 )
 ```
 
-Browse the [examples directory](https://github.com/danube-messaging/danube-py/tree/main/examples) for complete working code.
+Browse the [examples directory](https://github.com/danube-messaging/danube-py/tree/main/examples) for complete working code:
+
+- **[simple_producer_consumer](examples/simple_producer_consumer.py)** — basic send/receive
+- **[reliable_dispatch](examples/reliable_dispatch_producer.py)** — at-least-once delivery with acks
+- **[partitions](examples/partitions_producer.py)** — partitioned topic
+- **[key_shared](examples/key_shared_producer.py)** — Key-Shared routing, filtering, and producer with routing keys
+- **[json_producer](examples/json_producer.py)** / **[avro_producer](examples/avro_producer.py)** — schema registry integration
+- **[schema_evolution](examples/schema_evolution.py)** — schema versioning and compatibility
 
 ## Contribution
 

@@ -132,6 +132,63 @@ class Producer:
             return self._message_router.round_robin()
         return 0
 
+    def _select_partition_for_key(self, routing_key: str) -> int:
+        """Select a partition by hashing the routing key.
+
+        Ensures all messages with the same key go to the same partition.
+        For non-partitioned topics, returns 0.
+        """
+        if self._partitions > 0 and self._message_router is not None:
+            return self._message_router.key_route(routing_key)
+        return 0
+
+    async def send_with_key(
+        self,
+        data: bytes,
+        attributes: Optional[dict[str, str]],
+        routing_key: str,
+    ) -> int:
+        """Send a message with a routing key for KEY_SHARED subscriptions.
+
+        For partitioned topics: hashes the routing key to a specific partition,
+        ensuring all messages with the same key go to the same partition's WAL.
+        For non-partitioned topics: simply tags the routing key on the message.
+
+        All messages with the same routing key are guaranteed to be delivered
+        to the same consumer, in order, within a KEY_SHARED subscription.
+        """
+        async with self._lock:
+            partition_id = self._select_partition_for_key(routing_key)
+
+            if partition_id >= len(self._producers):
+                raise DanubeError("partition ID out of range")
+
+            retry_manager = RetryManager(
+                self._options.max_retries,
+                self._options.base_backoff_ms,
+                self._options.max_backoff_ms,
+            )
+            attempts = 0
+
+        while True:
+            try:
+                return await self._producers[partition_id].send(data, attributes, routing_key)
+            except UnrecoverableError:
+                await self._recreate_producer(partition_id)
+                attempts = 0
+                continue
+            except Exception as err:
+                if retry_manager.is_retryable(err):
+                    attempts += 1
+                    if attempts > retry_manager.max_retries:
+                        await self._lookup_and_recreate(partition_id, err)
+                        attempts = 0
+                        continue
+                    backoff = retry_manager.calculate_backoff(attempts - 1)
+                    await asyncio.sleep(backoff)
+                    continue
+                raise
+
     async def close(self) -> None:
         """Stop all background health check tasks for this producer."""
         for tp in self._producers:

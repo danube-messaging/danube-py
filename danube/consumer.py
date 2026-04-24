@@ -25,6 +25,7 @@ class SubType(IntEnum):
     EXCLUSIVE = 0
     SHARED = 1
     FAILOVER = 2
+    KEY_SHARED = 3
 
 
 @dataclass
@@ -46,6 +47,7 @@ class Consumer:
         subscription: str,
         subscription_type: SubType,
         options: ConsumerOptions,
+        key_filters: Optional[list[str]] = None,
     ) -> None:
         self._client = client
         self._topic_name = topic_name
@@ -53,6 +55,7 @@ class Consumer:
         self._subscription = subscription
         self._subscription_type = subscription_type
         self._options = options
+        self._key_filters = key_filters or []
         self._consumers: dict[str, TopicConsumer] = {}
         self._shutdown = asyncio.Event()
         self._tasks: list[asyncio.Task] = []
@@ -70,6 +73,7 @@ class Consumer:
                 consumer_name=self._consumer_name,
                 subscription=self._subscription,
                 subscription_type=int(self._subscription_type),
+                key_filters=self._key_filters,
                 max_retries=self._options.max_retries,
                 base_backoff_ms=self._options.base_backoff_ms,
                 max_backoff_ms=self._options.max_backoff_ms,
@@ -206,6 +210,7 @@ class ConsumerBuilder:
         self._subscription: str = ""
         self._subscription_type: SubType = SubType.SHARED
         self._options = ConsumerOptions()
+        self._key_filters: list[str] = []
 
     def with_topic(self, topic: str) -> ConsumerBuilder:
         self._topic = topic
@@ -227,6 +232,19 @@ class ConsumerBuilder:
         self._options = options
         return self
 
+    def with_key_filter(self, pattern: str) -> ConsumerBuilder:
+        """Add a key filter pattern for KEY_SHARED subscriptions.
+
+        Uses glob syntax: ``"user-*"``, ``"eu-west-?"``, ``"*"``.
+        """
+        self._key_filters.append(pattern)
+        return self
+
+    def with_key_filters(self, patterns: list[str]) -> ConsumerBuilder:
+        """Add multiple key filter patterns for KEY_SHARED subscriptions."""
+        self._key_filters.extend(patterns)
+        return self
+
     def build(self) -> Consumer:
         if not self._topic or not self._consumer_name or not self._subscription:
             raise ValueError("topic, consumer_name, and subscription are required")
@@ -238,4 +256,5 @@ class ConsumerBuilder:
             subscription=self._subscription,
             subscription_type=self._subscription_type,
             options=self._options,
+            key_filters=self._key_filters,
         )
