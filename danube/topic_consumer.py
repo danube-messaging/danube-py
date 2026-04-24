@@ -27,9 +27,10 @@ class TopicConsumer:
         consumer_name: str,
         subscription: str,
         subscription_type: int,
-        max_retries: int,
-        base_backoff_ms: int,
-        max_backoff_ms: int,
+        key_filters: Optional[list[str]] = None,
+        max_retries: int = 0,
+        base_backoff_ms: int = 0,
+        max_backoff_ms: int = 0,
     ) -> None:
         self.client = client
         self.topic_name = topic_name
@@ -37,6 +38,7 @@ class TopicConsumer:
         self.consumer_id: int = 0
         self.subscription = subscription
         self.subscription_type = subscription_type
+        self.key_filters = key_filters or []
         self._request_id = itertools.count(1)
         self.retry_manager = RetryManager(max_retries, base_backoff_ms, max_backoff_ms)
         self._stub: Optional[DanubeApi_pb2_grpc.ConsumerServiceStub] = None
@@ -87,6 +89,7 @@ class TopicConsumer:
             consumer_name=self.consumer_name,
             subscription=self.subscription,
             subscription_type=self.subscription_type,
+            key_filters=self.key_filters,
         )
 
         metadata = await self.client.auth_service.attach_token_if_needed(self.connect_url)

@@ -122,7 +122,7 @@ class TopicProducer:
             self._health_task.cancel()
             self._health_task = None
 
-    async def send(self, data: bytes, attributes: Optional[dict[str, str]] = None) -> int:
+    async def send(self, data: bytes, attributes: Optional[dict[str, str]] = None, routing_key: Optional[str] = None) -> int:
         if self._stub is None:
             raise UnrecoverableError("send: producer is not connected")
 
@@ -150,6 +150,8 @@ class TopicProducer:
             request.schema_id = self.schema_id
         if self.schema_version is not None:
             request.schema_version = self.schema_version
+        if routing_key is not None:
+            request.routing_key = routing_key
 
         metadata = await self.client.auth_service.attach_token_if_needed(self.connect_url)
         metadata = insert_proxy_header(metadata, self.broker_addr, self.proxy)
